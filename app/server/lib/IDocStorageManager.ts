@@ -32,6 +32,8 @@ export interface IDocStorageManager {
   getCopy(docName: string): Promise<string>;  // get an immutable copy of a document
 
   flushDoc(docName: string): Promise<void>; // flush a document to persistent storage
+  // FIXME: ne devrait pas être optionel, le HostedStorageManager est en réalité chargé de
+  // faire stocker les documents en mode host (et pas en electron)
   wipeCache?(docName: string): Promise<void>; // flush a document to persistent storage
   // If skipMetadataCache is set, then any caching of snapshots lists should be skipped.
   // Metadata may not be returned in this case.

@@ -378,6 +378,7 @@ export class HostedStorageManager implements IDocStorageManager {
       await this._extMeta.remove(docName);
     }
     // NOTE: fse.remove succeeds also when the file does not exist.
+    // FIXME: factoriser avec wipeCache
     await fse.remove(this.getPath(docName));
     await fse.remove(this._getHashFile(this.getPath(docName), 'doc'));
     await fse.remove(this._getHashFile(this.getPath(docName), 'meta'));

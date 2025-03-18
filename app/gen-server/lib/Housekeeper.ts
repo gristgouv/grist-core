@@ -47,6 +47,7 @@ export const Deps = {
  * Some care is taken to elect a single server to do the housekeeping, so if there are
  * multiple home servers, there will be no competition or duplication of effort.
  */
+// FIXME: Housekeeper is actually run by home worker
 export class Housekeeper {
   private _deleteTrashinterval?: NodeJS.Timeout;
   private _logMetricsInterval?: NodeJS.Timeout;

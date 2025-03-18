@@ -502,6 +502,7 @@ export class DocManager extends EventEmitter {
     this.unregisterSQLiteDB(activeDoc.docName);
     this._activeDocs.delete(activeDoc.docName);
     this._docsToClean.set(activeDoc.docName, Date.now());
+    // FIXME: this.storageManager.markAsClosed(activeDoc.docName);
   }
 
   /**
@@ -527,6 +528,7 @@ export class DocManager extends EventEmitter {
         log.error(`Failed to clean up local copy of ${docId}: ${e.stack}`);
       }
     }
+    // FIXME: release doc assignment
     log.debug(`Cache cleaned up for ${cleanedupDocsCacheCounter} out of a total of ${docsCacheToCleanup.length}`);
   }
 
