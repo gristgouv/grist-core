@@ -531,6 +531,7 @@ const spawners = {
   docker,             // Run sandboxes in distinct docker containers.
   gvisor,             // Gvisor's runsc sandbox.
   macSandboxExec,     // Use "sandbox-exec" on Mac.
+  linuxBubblewrap,
   pyodide,            // Run data engine using pyodide.
   skip: unsandboxed,  // Same as unsandboxed. Used to mean that the
   // user deliberately doesn't want sandboxing.
@@ -634,6 +635,7 @@ export type SpawnFn = (options: ISandboxOptions) => SandboxProcess;
 
 const hasRunsc = checkCommandExists("runsc");
 const hasSandboxExec = checkCommandExists("sandbox-exec");
+const hasBubblewrap = checkCommandExists("bubblewrap");
 
 /**
  * Currently for sandboxing use gvisor if available, otherwise
@@ -645,6 +647,9 @@ function sandboxed(options: ISandboxOptions): SandboxProcess {
   }
   else if (hasSandboxExec) {
     return macSandboxExec(options);
+  }
+  else if (hasBubblewrap) {
+    return linuxBubblewrap(options);
   }
   return pyodide(options);
 }
@@ -1016,6 +1021,142 @@ function macSandboxExec(options: ISandboxOptions): SandboxProcess {
     { cwd, env });
   return {
     name: "macSandboxExec",
+    child,
+    control: () => new DirectProcessControl(child, options.logMeta),
+  };
+}
+
+/**
+ * Helper function to run python using the bubblewrap command
+ * available on Linux.
+ */
+function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
+  const paths = getAbsolutePaths(options);
+
+  const env = {
+    PYTHONPATH: paths.engine,
+    IMPORTDIR: paths.importDir,
+    ...getInsertedEnv(options),
+    ...getWrappingEnv(options),
+  };
+  const command = findPython(options.command);
+  const realPath = realpathSync(command);
+  const venv = path.join(getAppRootFor(getAppRoot(), "sandbox"), "sandbox_venv3");
+  log.rawDebug("linuxBubblewrap found a python", { ...options.logMeta, command: realPath });
+  const exceptions = [
+    // to be shared (read-only)
+    "/lib", "/lib64",
+    // already virtualized
+    "/proc", "/sys",
+
+    "/usr", "/dev", "/proc",
+  ];
+
+  // FIXME: Use prlimit to limit the resource consumtion.
+  const args: string[] = [];
+  args.push("--unshare-all");
+  args.push("--unshare-user");
+  args.push("--proc", "/proc");
+  args.push("--dev", "/dev");
+
+  const cwd = path.join(process.cwd(), "sandbox");
+  const preservedPaths = [
+    "/usr/bin",
+    // "/usr/local/lib",
+    "/usr/lib64", // FIXME: should be added conditionally, see run.py
+    "/usr/lib",
+    cwd,
+    paths.sandboxDir,
+    command,
+    realPath,
+    venv,
+  ];
+
+  console.log("👀👀👀👀👀 ", paths);
+  console.log("YOLO", preservedPaths);
+
+  const symlinks = [
+    ["/usr/lib", "/lib"],
+    ["/usr/lib64", "/lib64"],
+    ["/usr/bin", "/bin"],
+    ["/usr/sbin", "/sbin"],
+  ];
+  const symlinked = symlinks.map(([, dest]) => dest);
+
+  const dirRealPathRootUnique = new Set(
+    fs.readdirSync("/").map(dir => fs.realpathSync(`/${dir}`)),
+  );
+
+  const excludedTmpFs = new Set([...preservedPaths, ...symlinked, ...exceptions]);
+  for (const dirRealPath of dirRealPathRootUnique) {
+    if (!excludedTmpFs.has(dirRealPath)) {
+      // This places an empty directory at this destination.
+      // Follow any symlinks since otherwise there is an error.
+      args.push("--tmpfs", dirRealPath);
+    }
+  }
+
+  for (const preserved of preservedPaths) {
+    args.push("--ro-bind", preserved, preserved);
+  }
+  args.push("--ro-bind", path.join(venv, "lib"), "/usr/local/lib");
+
+  for (const symlink of symlinks) {
+    args.push("--symlink", ...symlink);
+  }
+
+  // Define environment vars
+  const envEntries = Object.entries(env);
+  envEntries.push(
+    ["PATH", "/usr/local/bin:/usr/bin:/bin"],
+    ["LD_LIBRARY_PATH", "/usr/local/lib"],
+  );
+  args.push("--clearenv");
+  for (const [key, value] of envEntries) {
+    args.push("--setenv", key, String(value));
+  }
+  // Clear any other env variables
+
+  // Required? Sounds like it is when spawning a bash, so probably
+  args.push("--tmpfs", "/tmp");
+
+  args.push("--new-session");
+  args.push("--die-with-parent");
+  args.push("--disable-userns");
+  args.push("--chdir", "/");
+  // FIXME:
+  // args.push("--uid ", os.userInfo().uid?.toString() || "0");
+  // args.push("--gid ", "0");
+  // args.push("--hostname ", "gristland");
+
+  // FIXME: necessary?
+  // // Give access to Grist material.
+  // const cwd = path.join(process.cwd(), "sandbox");
+  // profile.push(`(allow file-read* (subpath ${JSON.stringify(paths.sandboxDir)}))`);
+  // profile.push(`(allow file-read* (subpath ${JSON.stringify(cwd)}))`);
+  // if (options.importDir) {
+  //   profile.push(`(allow file-read* (subpath ${JSON.stringify(paths.importDir)}))`);
+  // }
+
+  const pythonArgs = [
+    ...options.testPythonArgs,
+    ...(options.useGristEntrypoint !== false ? [paths.main] : []),
+  ];
+
+  const appendArgs = [
+    ...(options.comment ? [options.comment] : []),
+    ...(options.appendArgs ?? []),
+  ];
+
+  console.log("ARGS", args.join(" "));
+
+  const child = spawn("/usr/bin/bwrap",
+    [...options.testSandboxArgs, ...args,
+      /* command  FIXME: */
+      realPath, ...pythonArgs, ...appendArgs],
+    { cwd, env });
+  return {
+    name: "linuxBubblewrap",
     child,
     control: () => new DirectProcessControl(child, options.logMeta),
   };
