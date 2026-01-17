@@ -19,7 +19,7 @@ import { getPyodideSettings } from "app/server/lib/SandboxPyodide";
 import * as sandboxUtil from "app/server/lib/sandboxUtil";
 import * as shutdown from "app/server/lib/shutdown";
 
-import { ChildProcess, fork, spawn, SpawnOptionsWithoutStdio } from "child_process";
+import { ChildProcess, execSync, fork, spawn, SpawnOptionsWithoutStdio } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { Stream, Writable } from "stream";
@@ -635,7 +635,7 @@ export type SpawnFn = (options: ISandboxOptions) => SandboxProcess;
 
 const hasRunsc = checkCommandExists("runsc");
 const hasSandboxExec = checkCommandExists("sandbox-exec");
-const hasBubblewrap = checkCommandExists("bubblewrap");
+const hasBubblewrap = checkCommandExists("bwrap");
 
 /**
  * Currently for sandboxing use gvisor if available, otherwise
@@ -1035,12 +1035,14 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   const env = {
     PYTHONPATH: paths.engine,
-    IMPORTDIR: paths.importDir,
+    ...(paths.importDir ? { IMPORTDIR: paths.importDir } : {}),
     ...getInsertedEnv(options),
     ...getWrappingEnv(options),
   };
   const command = findPython(options.command);
   const realPath = realpathSync(command);
+  const ldflags = execSync("python3-config --ldflags").toString(); // FIXME: needed? Other sandbox don't have to do this
+  const ldpath = ldflags.match(/-L(\S+)/)?.[1];
   const venv = path.join(getAppRootFor(getAppRoot(), "sandbox"), "sandbox_venv3");
   log.rawDebug("linuxBubblewrap found a python", { ...options.logMeta, command: realPath });
   const exceptions = [
@@ -1063,8 +1065,8 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   const preservedPaths = [
     "/usr/bin",
     // "/usr/local/lib",
-    "/usr/lib64", // FIXME: should be added conditionally, see run.py
-    "/usr/lib",
+    "/usr/lib64", // FIXME: required? Otherwise should be added conditionally, see run.py
+    "/usr/lib", // FIMXE: required?
     cwd,
     paths.sandboxDir,
     command,
@@ -1099,7 +1101,14 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   for (const preserved of preservedPaths) {
     args.push("--ro-bind", preserved, preserved);
   }
-  args.push("--ro-bind", path.join(venv, "lib"), "/usr/local/lib");
+  args.push("--ro-bind", path.join(venv, "lib", path.basename(realPath), "site-packages"),
+    path.join("/usr/local/lib", path.basename(realPath), "dist-packages"));
+  if (ldpath) {
+    const libpythonPath = realpathSync(path.join(ldpath, `lib${path.basename(realPath)}.so`));
+    const dest = "/usr/local/lib/" + path.basename(libpythonPath);
+    args.push("--ro-bind", libpythonPath, dest);
+    args.push("--symlink", dest, dest.replace(/\.so[\d.]*$/, ".so"));
+  }
 
   for (const symlink of symlinks) {
     args.push("--symlink", ...symlink);
@@ -1148,7 +1157,7 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
     ...(options.appendArgs ?? []),
   ];
 
-  console.log("ARGS", args.join(" "));
+  console.log("bwrap", args.reduce((acc, cur) => acc + (cur.startsWith("-") ? " \\\n\t" + cur : " " + cur), ""));
 
   const child = spawn("/usr/bin/bwrap",
     [...options.testSandboxArgs, ...args,
