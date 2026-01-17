@@ -176,8 +176,8 @@ describe("Sandbox", function() {
       assert.deepEqual(emptyTmp, ["/tmp"]);
     });
 
-    it("gvisor and macSandboxExec should have no write access to sandbox files", async function() {
-      if (!["gvisor", "macSandboxExec"].includes(sandbox.getFlavor())) {
+    it("gvisor, macSandboxExec and linuxBubblewrap should have no write access to sandbox files", async function() {
+      if (!["gvisor", "macSandboxExec", "linuxBubblewrap"].includes(sandbox.getFlavor())) {
         this.skip();
       }
       const sandboxRoot = await sandbox.pyCall("test_get_sandbox_root");

@@ -21,6 +21,7 @@ import * as shutdown from "app/server/lib/shutdown";
 
 import { ChildProcess, execSync, fork, spawn, SpawnOptionsWithoutStdio } from "child_process";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { Stream, Writable } from "stream";
 
@@ -1054,19 +1055,20 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
     "/usr", "/dev", "/proc",
   ];
 
-  // FIXME: Use prlimit to limit the resource consumtion.
+  // FIXME: Use prlimit to limit the resource consumption.
   const args: string[] = [];
   args.push("--unshare-all");
   args.push("--unshare-user");
+  args.push("--unshare-cgroup");
   args.push("--proc", "/proc");
   args.push("--dev", "/dev");
 
   const cwd = path.join(process.cwd(), "sandbox");
   const preservedPaths = [
-    "/usr/bin",
+    // "/usr/bin",
     // "/usr/local/lib",
-    "/usr/lib64", // FIXME: required? Otherwise should be added conditionally, see run.py
-    "/usr/lib", // FIMXE: required?
+    "/usr/lib64", // FIXME: probably better to only expose libraries needed by the command, right?
+    "/usr/lib", // FIMXE: Here too?
     cwd,
     paths.sandboxDir,
     command,
@@ -1132,11 +1134,11 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   args.push("--new-session");
   args.push("--die-with-parent");
   args.push("--disable-userns");
+  args.push("--gid", "0");
+  args.push("--uid", os.userInfo().uid?.toString() || "0");
+  args.push("--hostname", "gristland");
+
   args.push("--chdir", "/");
-  // FIXME:
-  // args.push("--uid ", os.userInfo().uid?.toString() || "0");
-  // args.push("--gid ", "0");
-  // args.push("--hostname ", "gristland");
 
   // FIXME: necessary?
   // // Give access to Grist material.
@@ -1157,7 +1159,8 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
     ...(options.appendArgs ?? []),
   ];
 
-  console.log("bwrap", args.reduce((acc, cur) => acc + (cur.startsWith("-") ? " \\\n\t" + cur : " " + cur), ""));
+  console.log("bwrap", args.reduce((acc, cur) => acc + (cur.startsWith("-") ? " \\\n\t" + cur : " " + cur), "") +
+  " \\\n\t" + realPath);
 
   const child = spawn("/usr/bin/bwrap",
     [...options.testSandboxArgs, ...args,
