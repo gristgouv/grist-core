@@ -1068,7 +1068,7 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
     // "/usr/bin",
     // "/usr/local/lib",
     "/usr/lib64", // FIXME: probably better to only expose libraries needed by the command, right?
-    "/usr/lib", // FIMXE: Here too?
+    "/usr/lib", // FIXME: Here too?
     cwd,
     paths.sandboxDir,
     command,
@@ -1140,15 +1140,6 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   args.push("--chdir", "/");
 
-  // FIXME: necessary?
-  // // Give access to Grist material.
-  // const cwd = path.join(process.cwd(), "sandbox");
-  // profile.push(`(allow file-read* (subpath ${JSON.stringify(paths.sandboxDir)}))`);
-  // profile.push(`(allow file-read* (subpath ${JSON.stringify(cwd)}))`);
-  // if (options.importDir) {
-  //   profile.push(`(allow file-read* (subpath ${JSON.stringify(paths.importDir)}))`);
-  // }
-
   const pythonArgs = [
     ...options.testPythonArgs,
     ...(options.useGristEntrypoint !== false ? [paths.main] : []),
@@ -1164,7 +1155,6 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   const child = spawn("/usr/bin/bwrap",
     [...options.testSandboxArgs, ...args,
-      /* command  FIXME: */
       realPath, ...pythonArgs, ...appendArgs],
     { cwd, env });
   return {
