@@ -166,39 +166,33 @@ Running in normal mode helps you understand better what happens when writing or 
 
 ### Browser version issues
 
-End-to-end tests are run in the GitHub CI with a specific _Chrome_ version that is known to run the tests smoothly.
-
-⚠️ A current issue is that tests don't run properly with _Chrome for Testing_ binaries, or with _Chrome_ starting with version 134.
+End-to-end tests are run in the GitHub CI using the Chrome version pre-installed on GitHub Actions runners. The `buildtools/install_chrome_for_tests.sh` script uses this pre-installed Chrome version.
 
 **If you don't have any tests randomly failing while running them locally: great! You can move on.**
 
-Otherwise, you should make sure that the local test suite uses _Chrome v132_ or _Chrome v133_, and not a _Chrome for Testing_ variant.
+If you experience issues with tests locally, it may be related to your Chrome version. The test suite is configured to ignore Chrome version mismatches (`MOCHA_WEBDRIVER_IGNORE_CHROME_VERSION=1` in `test/init-mocha-webdriver.js`), but some Chrome versions may still have compatibility issues.
 
-In order to do that, you can use an env var to let the script know about a specific chrome binary to use. For example, if your Chrome (v132 or 133) path is `/usr/bin/google-chrome`:
+In order to use a specific Chrome binary, you can use the `TEST_CHROME_BINARY_PATH` env var. For example:
 
 ```
 TEST_CHROME_BINARY_PATH="/usr/bin/google-chrome" yarn run test:nbrowser
 ```
 
-#### Using an older Chrome version than the one you have already installed
+#### Using a specific Chrome version for local development
 
-You might already have Chrome v134+ installed and feel stuck!
-
-One solution is to build yourself a docker container matching what the GitHub actions does. Meaning, with node, python etc, an integrated Chrome v133 binary, and run tests inside that container.
-
-Another solution on Linux, is to just install an old Chrome version on your system directly.
-
-A simple trick is to install an old Chrome _Beta_ binary, in order to not mess with your current Chrome install.
+If you need to install a specific Chrome version for local development, you can install an old Chrome _Beta_ binary to avoid conflicts with your current Chrome install.
 
 #### Debian-based distro
 
-You can do the same as the `buildtools/install_chrome_for_tests.sh` script, but target an old version of Chrome _Beta_ like this:
+You can install a specific Chrome Beta version like this:
 
 ```bash
 curl -sS -o /tmp/chrome.deb http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-beta/google-chrome-beta_133.0.6943.35-1_amd64.deb \
   && sudo apt-get install --allow-downgrades -y /tmp/chrome.deb \
   && rm /tmp/chrome.deb \
 ```
+
+Note: Specific Chrome version URLs may become unavailable over time.
 
 Open `google-chrome-beta` one time manually to confirm any first-loads modals that would prevent tests to run correctly.
 
@@ -231,10 +225,10 @@ yarn run test:nbrowser
 
 #### macOS
 
-Unfortunately there is no easy way in macOS to pin Chrome version without it auto-updating. If you absolutely need to run tests locally for now:
+Unfortunately there is no easy way in macOS to pin Chrome version without it auto-updating. If you encounter issues with tests locally:
 
-- create a docker image matching the GitHub CI environment in order to run the tests inside a Linux environment having a pinned Chrome version
-- or… help us fix the tests (sorry)!
+- create a docker image matching the GitHub CI environment in order to run the tests inside a Linux environment
+- or rely on the GitHub CI which runs tests automatically against pull requests
 
 Note that tests are always run against pull requests and you can also rely on the GitHub CI instead.
 
