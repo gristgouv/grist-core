@@ -1042,8 +1042,6 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   };
   const command = findPython(options.command);
   const realPath = realpathSync(command);
-  const ldflags = execSync("python3-config --ldflags").toString(); // FIXME: needed? Other sandbox don't have to do this
-  const ldpath = ldflags.match(/-L(\S+)/)?.[1];
   const venv = path.join(getAppRootFor(getAppRoot(), "sandbox"), "sandbox_venv3");
   log.rawDebug("linuxBubblewrap found a python", { ...options.logMeta, command: realPath });
   const exceptions = [
@@ -1080,7 +1078,7 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   console.log("YOLO", preservedPaths);
 
   const symlinks = [
-    ["/usr/lib", "/lib"],
+    ["/usr/lib", "/lib"], // FIXME: Is it possible it is the contrary on some systems?
     ["/usr/lib64", "/lib64"],
     ["/usr/bin", "/bin"],
     ["/usr/sbin", "/sbin"],
@@ -1105,12 +1103,19 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   }
   args.push("--ro-bind", path.join(venv, "lib", path.basename(realPath), "site-packages"),
     path.join("/usr/local/lib", path.basename(realPath), "dist-packages"));
-  if (ldpath) {
-    const libpythonPath = realpathSync(path.join(ldpath, `lib${path.basename(realPath)}.so`));
-    const dest = "/usr/local/lib/" + path.basename(libpythonPath);
-    args.push("--ro-bind", libpythonPath, dest);
-    args.push("--symlink", dest, dest.replace(/\.so[\d.]*$/, ".so"));
+  const envNameLibpythonPath = "BWRAP_LIBPYTHON_PATH";
+  let libpythonPath = process.env[envNameLibpythonPath];
+  // FIXME: maybe rather add it in run.sh
+  if (!libpythonPath) {
+    libpythonPath = execSync("find_libpython").toString("utf-8");
+    if (!libpythonPath) {
+      throw new Error(
+        `Cannot find libpython, please either install find_libpython or specify the path through the env variable ${envNameLibpythonPath}`);
+    }
   }
+  const dest = "/usr/local/lib/" + path.basename(libpythonPath);
+  args.push("--ro-bind", realpathSync(libpythonPath), dest);
+  args.push("--symlink", dest, dest.replace(/\.so[\d.]*$/, ".so"));
 
   for (const symlink of symlinks) {
     args.push("--symlink", ...symlink);
@@ -1152,11 +1157,19 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   console.log("bwrap", args.reduce((acc, cur) => acc + (cur.startsWith("-") ? " \\\n\t" + cur : " " + cur), "") +
   " \\\n\t" + realPath);
+  const prlimitArgs = [
+    "--nofile=64", // number of files
+    "--nproc=10000", // number of processes. Prevents fork bomb. FIXME: what number should I set?
+    ...(process.env.BWRAP_LIMIT_MEMORY ? [`--as=${process.env.BWRAP_LIMIT_MEMORY}`] : []),
+    "--",
+  ];
 
-  const child = spawn("/usr/bin/bwrap",
-    [...options.testSandboxArgs, ...args,
-      realPath, ...pythonArgs, ...appendArgs],
-    { cwd, env });
+  // FIXME: should we suppose the path for these command to be here in every linux OS?
+  const child = spawn("/usr/bin/bwrap", [
+    ...options.testSandboxArgs, ...args,
+    realPath, ...pythonArgs, ...appendArgs,
+    "&", "echo", "$!"
+  ], { cwd, env, stdio: ["pipe", "pipe", "pipe", "pipe"] });
   return {
     name: "linuxBubblewrap",
     child,
