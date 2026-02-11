@@ -717,7 +717,7 @@ function pyodide(options: ISandboxOptions): SandboxProcess {
   let child: ChildProcess;
 
   const command = options.command ?? pyodideSettings.command;
-  const usePrlimit = !options.command && hasPrlimit;
+  const usePrlimit = !options.command && hasPrlimit && !!command;
   if (command) {
     const args = [
       ...pyodideSettings.args,
