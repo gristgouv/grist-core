@@ -717,7 +717,7 @@ function pyodide(options: ISandboxOptions): SandboxProcess {
   let child: ChildProcess;
 
   const command = options.command ?? pyodideSettings.command;
-  const usePrlimit = !options.command && hasPrlimit && !!command;
+  const usePrlimit = !options.command && hasPrlimit;
   if (command) {
     const args = [
       ...pyodideSettings.args,
@@ -1112,7 +1112,18 @@ function prLimit(pid: number) {
   }
   console.log("➡️ ", "prlimit", [...args, "--pid", String(pid)]);
 
-  return spawn("prlimit", [...args, "--pid", String(pid)]);
+  const child = spawn("prlimit", [...args, "--pid", String(pid)]);
+  child.on("error", (err) => {
+    console.error("❌ prlimit failed:", err);
+  });
+  child.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`❌ prlimit exited with code ${code}`);
+    } else {
+      console.log("✅ prlimit applied successfully");
+    }
+  });
+  return child;
 }
 
 /**
