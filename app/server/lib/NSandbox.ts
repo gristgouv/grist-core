@@ -1092,6 +1092,20 @@ function getAbsolutePaths(options: ISandboxOptions) {
   };
 }
 
+/**
+ * Apply resource limits to a running process using prlimit.
+ * 
+ * This function is called after spawning a sandbox process to enforce
+ * resource limits like RLIMIT_AS (virtual memory) and RLIMIT_NPROC (process count).
+ * 
+ * Note: There is a potential race condition where the child process may allocate
+ * memory before prlimit takes effect. However, most sandboxes (including Pyodide)
+ * wait for input on stdin before doing significant work, which mitigates this issue.
+ * 
+ * The function runs prlimit asynchronously and logs success/failure for debugging.
+ * If prlimit fails (e.g., command not found or permission denied), the sandbox
+ * will run without the intended resource limits.
+ */
 function prLimit(pid: number) {
   const args = [];
   console.log("⚙️ applying prlimit to process id = ", pid);
