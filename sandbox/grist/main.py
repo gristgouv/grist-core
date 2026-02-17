@@ -4,6 +4,7 @@ and starts the grist sandbox. See engine.py for the API documentation.
 """
 import os
 import random
+import signal
 import sys
 import time
 
@@ -238,6 +239,11 @@ def run(sandbox):
 
   log.info("Ready")  # This log message is significant for checkpointing.
   sandbox.run()
+  # TODO: try these lines
+  # if os.environ.get("WAIT_FOR_SIGUSR1") != "1":
+  #   sandbox.run()
+  # else:
+  #   signal.signal(signal.SIGUSR1, sandbox.run)
 
 def main():
   run(get_default_sandbox())

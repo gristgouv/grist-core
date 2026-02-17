@@ -638,6 +638,9 @@ const hasRunsc = checkCommandExists("runsc");
 const hasSandboxExec = checkCommandExists("sandbox-exec");
 const hasBubblewrap = checkCommandExists("bwrap");
 
+// This is used to limit resource usage on Linux.
+const hasPrlimit = checkCommandExists("prlimit");
+
 /**
  * Currently for sandboxing use gvisor if available, otherwise
  * try native sandboxing on macs, otherwise fall back on pyodide.
@@ -730,6 +733,7 @@ function pyodide(options: ISandboxOptions): SandboxProcess {
   let child: ChildProcess;
 
   const command = options.command ?? pyodideSettings.command;
+  const usePrlimit = !options.command && hasPrlimit;
   if (command) {
     const args = [
       ...pyodideSettings.args,
@@ -754,6 +758,10 @@ function pyodide(options: ISandboxOptions): SandboxProcess {
       scriptPath,
       { cwd, ...spawnOptions },
     );
+  }
+
+  if (usePrlimit && child.pid) {
+    prLimit(child.pid);
   }
 
   return {
@@ -1033,6 +1041,8 @@ function macSandboxExec(options: ISandboxOptions): SandboxProcess {
  */
 function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   const paths = getAbsolutePaths(options);
+  const NB_FILE_DESCRIPTORS = 6; // The last file descriptor number is 5
+  const BWRAP_INFO_FILE_DESCRIPTOR = 5;
 
   const env = {
     PYTHONPATH: paths.engine,
@@ -1142,6 +1152,7 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
   args.push("--gid", "0");
   args.push("--uid", os.userInfo().uid?.toString() || "0");
   args.push("--hostname", "gristland");
+  args.push("--info-fd", BWRAP_INFO_FILE_DESCRIPTOR.toString());
 
   args.push("--chdir", "/");
 
@@ -1157,19 +1168,33 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   console.log("bwrap", args.reduce((acc, cur) => acc + (cur.startsWith("-") ? " \\\n\t" + cur : " " + cur), "") +
   " \\\n\t" + realPath);
-  const prlimitArgs = [
-    "--nofile=64", // number of files
-    "--nproc=10000", // number of processes. Prevents fork bomb. FIXME: what number should I set?
-    ...(process.env.BWRAP_LIMIT_MEMORY ? [`--as=${process.env.BWRAP_LIMIT_MEMORY}`] : []),
-    "--",
-  ];
-
   // FIXME: should we suppose the path for these command to be here in every linux OS?
   const child = spawn("/usr/bin/bwrap", [
     ...options.testSandboxArgs, ...args,
     realPath, ...pythonArgs, ...appendArgs,
-    "&", "echo", "$!"
-  ], { cwd, env, stdio: ["pipe", "pipe", "pipe", "pipe"] });
+  ], {
+    cwd, env,
+    // Having to cheat with the type of stdio. In fact, we can create more than 5 pipes
+    // on Linux.
+    // (Is there any reason for @types/node for limiting to 5 only?)
+    stdio: Array.from({ length: NB_FILE_DESCRIPTORS }).fill("pipe") as any,
+  });
+
+  if (hasPrlimit) {
+    // FIXME: in case of error when trying to find the python app PID or when
+    // calling prlimit, log errors.
+    const chunks: string[] = [];
+    child.stdio[BWRAP_INFO_FILE_DESCRIPTOR as number]
+      ?.on("data", chunk => chunks.push(chunk.toString()))
+      .on("end", () => {
+        const info = JSON.parse(chunks.join(""));
+        const forkedPid = info["child-pid"];
+        // Get the child pid of the forked process of bubblewrap.
+        const sandboxedPythonPid = execSync(`/usr/bin/ps --ppid ${forkedPid} -o pid=`).toString("utf8").trim();
+        prLimit(parseInt(sandboxedPythonPid, 10));
+      });
+  }
+
   return {
     name: "linuxBubblewrap",
     child,
@@ -1250,6 +1275,21 @@ function getAbsolutePaths(options: ISandboxOptions) {
     main: path.join(sandboxDir, "grist/main.py"),
     engine: path.join(sandboxDir, "grist"),
   };
+}
+
+function prLimit(pid: number) {
+  const nproc = parseInt(process.env.SANDBOX_RLIMIT_NPROC ?? "8");
+  if (Number.isNaN(nproc)) {
+    throw new Error("Invalid value for SANDBOX_RLIMIT_NPROC : " + process.env.SANDBOX_RLIMIT_NPROC);
+  }
+  const prlimitArgs = [
+    "--nofile=64", // number of files. FIXME: Useful? What value?
+    `--nproc=${nproc}`, // number of processes. Prevents fork bomb. FIXME: what number should I set?
+    ...(process.env.SANDBOX_RLIMIT_AS ? [`--as=${process.env.SANDBOX_RLIMIT_AS}`] : []),
+    `--pid=${pid}`,
+  ];
+
+  return spawn("/usr/bin/prlimit", prlimitArgs, { stdio: ["pipe", process.stdout, process.stderr] });
 }
 
 /**
