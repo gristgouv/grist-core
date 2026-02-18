@@ -1046,6 +1046,7 @@ function linuxBubblewrap(options: ISandboxOptions): SandboxProcess {
 
   const env = {
     PYTHONPATH: paths.engine,
+    WAIT_FOR_SIGUSR1: "1",
     ...(paths.importDir ? { IMPORTDIR: paths.importDir } : {}),
     ...getInsertedEnv(options),
     ...getWrappingEnv(options),
@@ -1289,7 +1290,11 @@ function prLimit(pid: number) {
     `--pid=${pid}`,
   ];
 
-  return spawn("/usr/bin/prlimit", prlimitArgs, { stdio: ["pipe", process.stdout, process.stderr] });
+  spawn("/usr/bin/prlimit", prlimitArgs, { stdio: ["pipe", process.stdout, process.stderr] }).on("exit", (code) => {
+    if (code === 0) {
+      process.kill(pid, "SIGUSR1"); // FIXME: will it work on Mac?
+    }
+  });
 }
 
 /**
