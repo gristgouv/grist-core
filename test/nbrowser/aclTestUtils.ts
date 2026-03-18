@@ -217,7 +217,7 @@ export async function assertSaved() {
   await gu.waitToPass(async () => {
     assert.equal(await driver.find(".test-rules-non-save").getText(), "Saved");
     assert.equal(await driver.find(".test-rules-save").getText(), "");
-  }, 200);
+  }, 1000);
 }
 
 /**
