@@ -9,6 +9,8 @@ import { enterRulePart, findDefaultRuleSet, findDefaultRuleSetWait, findRuleSet,
 import * as gu from "test/nbrowser/gristUtils";
 import { setupTestSuite } from "test/nbrowser/testUtils";
 
+import { fail } from "node:assert";
+
 import escapeRegExp from "lodash/escapeRegExp";
 import { assert, driver, Key, WebElement } from "mocha-webdriver";
 
@@ -890,5 +892,9 @@ describe("AccessRules2", function() {
       assert.equal(await driver.find(".test-tools-access-rules-trigger").isPresent(), true);
     });
     assert.equal(await driver.find(".test-tools-access-rules-trigger").isDisplayed(), false);
+  });
+
+  it("fails", function() {
+    fail("foo");
   });
 });
