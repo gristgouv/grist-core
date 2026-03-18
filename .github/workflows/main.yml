@@ -54,10 +54,10 @@ jobs:
       - name: Install Google Chrome and chromedriver
         run: buildtools/install_chrome_for_tests.sh -y
 
-      - name: Run Dates.ntest
+      - name: Run tests for ^[A-D]
         run: |
           mkdir -p $MOCHA_WEBDRIVER_LOGDIR
-          GREP_TESTS="^Dates.ntest\b" MOCHA_WEBDRIVER_HEADLESS=1 yarn run test:nbrowser
+          GREP_TESTS="^[A-D]" MOCHA_WEBDRIVER_HEADLESS=1 yarn run test:nbrowser
         env:
           MOCHA_WEBDRIVER_LOGDIR: ${{ runner.temp }}/test-logs/webdriver
           GVISOR_FLAGS: "-unprivileged -ignore-cgroups"
