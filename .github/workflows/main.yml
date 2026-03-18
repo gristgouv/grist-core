@@ -1,4 +1,5 @@
 name: CI
+# Trigger CI run
 
 on:
   push:
