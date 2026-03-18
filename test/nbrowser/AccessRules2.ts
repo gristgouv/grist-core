@@ -171,99 +171,104 @@ describe("AccessRules2", function() {
   });
 
   it("should make all tables/columns available to editor of ACL rules", async function() {
-    const mainSession = await gu.session().teamSite.user("user1").login();
-    await mainSession.loadDoc(`/doc/${docId}`);
-    await startEditingAccessRules();
+    await driver.saveScreenshot(); const mainSession = await gu.session().teamSite.user("user1").login();
+    await driver.saveScreenshot(); await mainSession.loadDoc(`/doc/${docId}`);
+    await driver.saveScreenshot(); await startEditingAccessRules();
 
     // Add table rules for ClientsTable.
-    await driver.findContentWait("button", /Add table rules/, 2000).click();
-    const options = await gu.findOpenMenuAllItems("li", e => e.getText());
+    await driver.saveScreenshot(); await driver.findContentWait("button", /Add table rules/, 2000).click();
+    await driver.saveScreenshot(); const options = await gu.findOpenMenuAllItems("li", e => e.getText());
+    await driver.saveScreenshot();
     assert.deepEqual(options, ["ClientsTable", "ClientsTable [by Shared]", "FinancialsTable"]);
-    await gu.findOpenMenuItem("li", /ClientsTable/).click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", /ClientsTable/).click();
 
     // Add rules hiding First_Name, Last_Name columns.
-    await findTableWait(/ClientsTable/).find(".test-rule-table-menu-btn").click();
-    await gu.findOpenMenuItem("li", /Add column rule/).click();
-    let ruleSet = findRuleSetWait(/ClientsTable/, 1);
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 300).click();
-    await gu.findOpenMenuItem("li", "First_Name").click();
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 300).click();
-    await gu.findOpenMenuItem("li", "Last_Name").click();
-    await enterRulePart(ruleSet, 1, null, { R: "deny" });
+    await driver.saveScreenshot(); await findTableWait(/ClientsTable/).find(".test-rule-table-menu-btn").click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", /Add column rule/).click();
+    await driver.saveScreenshot(); let ruleSet = findRuleSetWait(/ClientsTable/, 1);
+    await driver.saveScreenshot(); await ruleSet.findWait(".test-rule-resource .test-select-open", 300).click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", "First_Name").click();
+    await driver.saveScreenshot(); await ruleSet.findWait(".test-rule-resource .test-select-open", 300).click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", "Last_Name").click();
+    await driver.saveScreenshot(); await enterRulePart(ruleSet, 1, null, { R: "deny" });
 
     // Add table rule entirely hiding FinancialsTable.
-    await driver.findContentWait("button", /Add table rules/, 2000).click();
-    await gu.findOpenMenuItem("li", /FinancialsTable/).click();
-    ruleSet = findDefaultRuleSetWait(/FinancialsTable/);
-    await enterRulePart(ruleSet, 1, null, { R: "deny" });
+    await driver.saveScreenshot(); await driver.findContentWait("button", /Add table rules/, 2000).click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", /FinancialsTable/).click();
+    await driver.saveScreenshot(); ruleSet = findDefaultRuleSetWait(/FinancialsTable/);
+    await driver.saveScreenshot(); await enterRulePart(ruleSet, 1, null, { R: "deny" });
 
     // Save and reload.
-    await driver.find(".test-rules-save").click();
-    await gu.waitForServer();
-    await driver.navigate().refresh();
-    await driver.findWait(".test-rule-set", 5000);
+    await driver.saveScreenshot(); await driver.find(".test-rules-save").click();
+    await driver.saveScreenshot(); await gu.waitForServer();
+    await driver.saveScreenshot(); await driver.navigate().refresh();
+    await driver.saveScreenshot(); await driver.findWait(".test-rule-set", 5000);
 
     // Now this user isn't aware of the inaccessible columns and table, but ACL rules should
     // still list them.
 
     // Remove Last_Name column from being blocked. Check that it's now available in dropdown.
-    await driver.findWait(".test-rule-set", 2000);
-    ruleSet = findRuleSetWait(/ClientsTable/, 1);
-    await ruleSet.find(".test-rule-resource").click();
+    await driver.saveScreenshot(); await driver.findWait(".test-rule-set", 2000);
+    await driver.saveScreenshot(); ruleSet = findRuleSetWait(/ClientsTable/, 1);
+    await driver.saveScreenshot(); await ruleSet.find(".test-rule-resource").click();
+    await driver.saveScreenshot();
     await ruleSet.findContent(".test-acl-column", "Last_Name").find(".test-acl-col-remove").click();
-    await ruleSet.find(".test-rule-resource .test-select-open").click();
-    assert.equal(await gu.findOpenMenuItem("li", "Last_Name").isPresent(), true);
-    await driver.sendKeys(Key.ESCAPE);    // Close menu.
-    await gu.waitForMenuToClose();
-    await driver.sendKeys(Key.ESCAPE);    // Close editing of columns.
+    await driver.saveScreenshot(); await ruleSet.find(".test-rule-resource .test-select-open").click();
+    await driver.saveScreenshot(); assert.equal(await gu.findOpenMenuItem("li", "Last_Name").isPresent(), true);
+    await driver.saveScreenshot(); await driver.sendKeys(Key.ESCAPE);    // Close menu.
+    await driver.saveScreenshot(); await gu.waitForMenuToClose();
+    await driver.saveScreenshot(); await driver.sendKeys(Key.ESCAPE);    // Close editing of columns.
     // Make sure we don't have any select visible.
-    await gu.waitToPass(async () => {
+    await driver.saveScreenshot(); await gu.waitToPass(async () => {
       assert.isFalse(await ruleSet.find(".test-rule-resource .test-select-open").isDisplayed());
     });
 
     // Remove FinancialsTable from being blocked. Check that it's now available in dropdown.
-    ruleSet = findRuleSetWait(/FinancialsTable/, 1);
+    await driver.saveScreenshot(); ruleSet = findRuleSetWait(/FinancialsTable/, 1);
+    await driver.saveScreenshot();
     await ruleSet.find(".test-rule-part-and-memo:nth-child(1) .test-rule-remove").click();
-    await driver.findContentWait("button", /Add table rules/, 2000).click();
-    assert.equal(await gu.findOpenMenuItem("li", /FinancialsTable/).isPresent(), true);
-    assert.equal(await gu.findOpenMenuItem("li", /FinancialsTable/).matches(".disabled"), false);
-    await driver.sendKeys(Key.ESCAPE);
+    await driver.saveScreenshot(); await driver.findContentWait("button", /Add table rules/, 2000).click();
+    await driver.saveScreenshot(); assert.equal(await gu.findOpenMenuItem("li", /FinancialsTable/).isPresent(), true);
+    await driver.saveScreenshot(); assert.equal(await gu.findOpenMenuItem("li", /FinancialsTable/).matches(".disabled"), false);
+    await driver.saveScreenshot(); await driver.sendKeys(Key.ESCAPE);
 
     // Save
-    await driver.find(".test-rules-save").click();
-    await gu.waitForServer();
+    await driver.saveScreenshot(); await driver.find(".test-rules-save").click();
+    await driver.saveScreenshot(); await gu.waitForServer();
 
     // Remove First_Name column from being blocked, and add back Last_Name column.
-    ruleSet = findRuleSetWait(/ClientsTable/, 1);
-    await ruleSet.find(".test-rule-resource").click();
+    await driver.saveScreenshot(); ruleSet = findRuleSetWait(/ClientsTable/, 1);
+    await driver.saveScreenshot(); await ruleSet.find(".test-rule-resource").click();
+    await driver.saveScreenshot();
     await ruleSet.findContent(".test-acl-column", "First_Name").find(".test-acl-col-remove").click();
-    await ruleSet.find(".test-rule-resource .test-select-open").click();
-    await gu.findOpenMenuItem("li", "Last_Name").click();
+    await driver.saveScreenshot(); await ruleSet.find(".test-rule-resource .test-select-open").click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", "Last_Name").click();
 
     // Add back FinancialsTable to be blocked.
-    assert.equal(await findRuleSet(/FinancialsTable/, 1).isPresent(), false);
-    await driver.findContentWait("button", /Add table rules/, 2000).click();
-    await gu.findOpenMenuItem("li", /FinancialsTable/).click();
-    ruleSet = findDefaultRuleSetWait(/FinancialsTable/);
+    await driver.saveScreenshot(); assert.equal(await findRuleSet(/FinancialsTable/, 1).isPresent(), false);
+    await driver.saveScreenshot(); await driver.findContentWait("button", /Add table rules/, 2000).click();
+    await driver.saveScreenshot(); await gu.findOpenMenuItem("li", /FinancialsTable/).click();
+    await driver.saveScreenshot(); ruleSet = findDefaultRuleSetWait(/FinancialsTable/);
 
-    await enterRulePart(ruleSet, 1, null, { R: "deny" });
+    await driver.saveScreenshot(); await enterRulePart(ruleSet, 1, null, { R: "deny" });
 
     // Save and reload.
-    await driver.find(".test-rules-save").click();
-    await gu.waitForServer();
-    await driver.navigate().refresh();
-    await driver.findWait(".test-rule-set", 5000);
+    await driver.saveScreenshot(); await driver.find(".test-rules-save").click();
+    await driver.saveScreenshot(); await gu.waitForServer();
+    await driver.saveScreenshot(); await driver.navigate().refresh();
+    await driver.saveScreenshot(); await driver.findWait(".test-rule-set", 5000);
 
     // Verify the results.
-    ruleSet = findRuleSetWait(/ClientsTable/, 1);
+    await driver.saveScreenshot(); ruleSet = findRuleSetWait(/ClientsTable/, 1);
+    await driver.saveScreenshot();
     assert.deepEqual(await ruleSet.findAll(".test-acl-column", el => el.getText()), ["Last_Name"]);
-    assert.equal(await findDefaultRuleSetWait(/FinancialsTable/).isPresent(), true);
+    await driver.saveScreenshot(); assert.equal(await findDefaultRuleSetWait(/FinancialsTable/).isPresent(), true);
 
     // Remove the installed "Deny" rules to restore the initial state.
-    await findRuleSet(/ClientsTable/, 1).find(".test-rule-remove").click();
-    await findRuleSet(/FinancialsTable/, 1).find(".test-rule-remove").click();
-    await driver.find(".test-rules-save").click();
-    await gu.waitForServer();
+    await driver.saveScreenshot(); await findRuleSet(/ClientsTable/, 1).find(".test-rule-remove").click();
+    await driver.saveScreenshot(); await findRuleSet(/FinancialsTable/, 1).find(".test-rule-remove").click();
+    await driver.saveScreenshot(); await driver.find(".test-rules-save").click();
+    await driver.saveScreenshot(); await gu.waitForServer();
   });
 
   it("should support user-attribute rules", async function() {
