@@ -57,7 +57,7 @@ jobs:
       - name: Run Dates.ntest
         run: |
           mkdir -p $MOCHA_WEBDRIVER_LOGDIR
-          GREP_TESTS="Dates.ntest" MOCHA_WEBDRIVER_SKIP_CLEANUP=1 MOCHA_WEBDRIVER_HEADLESS=1 yarn run test:nbrowser
+          GREP_TESTS="^Dates.ntest\b" MOCHA_WEBDRIVER_HEADLESS=1 yarn run test:nbrowser
         env:
           MOCHA_WEBDRIVER_LOGDIR: ${{ runner.temp }}/test-logs/webdriver
           GVISOR_FLAGS: "-unprivileged -ignore-cgroups"
