@@ -19,6 +19,9 @@ describe("DropdownConditionEditor", function() {
       [gu.translateUser("user2").email]: "editors",
     } });
     await addUserAttributes();
+    // Reload the document to ensure docPageModel.user is refreshed with the new user attributes
+    // (e.g. Roles.Admin, Roles.Email) added by addUserAttributes().
+    await session.loadDoc(`/doc/${docId}`);
     await gu.openPage("Employees");
     await gu.openColumnPanel();
   });

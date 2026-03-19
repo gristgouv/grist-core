@@ -7,7 +7,7 @@ import * as gu from "test/nbrowser/gristUtils";
 import { server } from "test/nbrowser/testServer";
 import { setupTestSuite } from "test/nbrowser/testUtils";
 
-import { assert, driver, Key, stackWrapFunc } from "mocha-webdriver";
+import { assert, driver, Key, stackWrapFunc, WebElement } from "mocha-webdriver";
 
 describe("AccessRules1", function() {
   this.timeout(20000);
@@ -122,9 +122,11 @@ describe("AccessRules1", function() {
     await gu.findOpenMenuItem("li", /ClientsTable/).click();
     await findTableWait(/ClientsTable/).findWait(".test-rule-table-menu-btn", 300).click();
     await gu.findOpenMenuItem("li", /Add column rule/).click();
-    ruleSet = findRuleSet(/ClientsTable/, 1);
-
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 2000).click();
+    // menuItemAsync uses setTimeout(0); retry until the column rule set appears in the DOM.
+    await gu.waitToPass(async () => {
+      ruleSet = findRuleSet(/ClientsTable/, 1);
+      await ruleSet.findWait(".test-rule-resource .test-select-open", 500).click();
+    }, 4000);
     assert.deepEqual(
       await gu.findOpenMenuAllItems("li", el => el.getText()),
       [
@@ -365,8 +367,12 @@ describe("AccessRules1", function() {
     // Add a column rule that uses rec but doesn't set read permission.
     await findTable(/FinancialsTable/).find(".test-rule-table-menu-btn").click();
     await gu.findOpenMenuItem("li", /Add column rule/).click();
-    let ruleSet = findRuleSet(/FinancialsTable/, 1);
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 2000).click();
+    // menuItemAsync uses setTimeout(0); retry until the column rule set appears in the DOM.
+    let ruleSet!: WebElement;
+    await gu.waitToPass(async () => {
+      ruleSet = findRuleSet(/FinancialsTable/, 1);
+      await ruleSet.findWait(".test-rule-resource .test-select-open", 500).click();
+    }, 4000);
     assert.deepEqual(
       await gu.findOpenMenuAllItems("li", el => el.getText()),
       ["Expenses", "Income", "Year"],
@@ -396,8 +402,12 @@ describe("AccessRules1", function() {
     await driver.findWait(".test-rule-set", 2000);
     await findTable(/FinancialsTable/).find(".test-rule-table-menu-btn").click();
     await gu.findOpenMenuItem("li", /Add column rule/).click();
-    let ruleSet = findRuleSet(/FinancialsTable/, 1);
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 2000).click();
+    // menuItemAsync uses setTimeout(0); retry until the column rule set appears in the DOM.
+    let ruleSet!: WebElement;
+    await gu.waitToPass(async () => {
+      ruleSet = findRuleSet(/FinancialsTable/, 1);
+      await ruleSet.findWait(".test-rule-resource .test-select-open", 500).click();
+    }, 4000);
     assert.deepEqual(
       await gu.findOpenMenuAllItems("li", el => el.getText()),
       ["Expenses", "Income", "Year"],
@@ -410,8 +420,11 @@ describe("AccessRules1", function() {
     // Make a rule for FinancialsTable.Year and FinancialsTable.Expenses that allows something.
     await findTable(/FinancialsTable/).find(".test-rule-table-menu-btn").click();
     await gu.findOpenMenuItem("li", /Add column rule/).click();
-    ruleSet = findRuleSet(/FinancialsTable/, 2);
-    await ruleSet.findWait(".test-rule-resource .test-select-open", 2000).click();
+    // menuItemAsync uses setTimeout(0); retry until the column rule set appears in the DOM.
+    await gu.waitToPass(async () => {
+      ruleSet = findRuleSet(/FinancialsTable/, 2);
+      await ruleSet.findWait(".test-rule-resource .test-select-open", 500).click();
+    }, 4000);
     assert.deepEqual(
       await gu.findOpenMenuAllItems("li", el => el.getText()),
       ["Expenses", "Income", "Year"],
