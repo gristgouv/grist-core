@@ -368,6 +368,7 @@ describe("AccessRules1", function() {
     await findTable(/FinancialsTable/).find(".test-rule-table-menu-btn").click();
     await gu.findOpenMenuItem("li", /Add column rule/).click();
     // menuItemAsync uses setTimeout(0); retry until the column rule set appears in the DOM.
+    // `ruleSet` is guaranteed to be assigned when waitToPass resolves (it throws otherwise).
     let ruleSet!: WebElement;
     await gu.waitToPass(async () => {
       ruleSet = findRuleSet(/FinancialsTable/, 1);
