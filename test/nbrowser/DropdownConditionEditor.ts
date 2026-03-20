@@ -19,6 +19,9 @@ describe("DropdownConditionEditor", function() {
       [gu.translateUser("user2").email]: "editors",
     } });
     await addUserAttributes();
+    // Reload the document to ensure docPageModel.user is refreshed with the new user attributes
+    // (e.g. Roles.Admin, Roles.Email) added by addUserAttributes().
+    await session.loadDoc(`/doc/${docId}`);
     await gu.openPage("Employees");
     await gu.openColumnPanel();
   });
@@ -350,6 +353,13 @@ describe("DropdownConditionEditor", function() {
   });
 
   it("supports user variable", async function() {
+    // Reload the document so that docPageModel.user is freshly populated from the server,
+    // ensuring the Roles user attribute (added by addUserAttributes()) is available.
+    // This test runs before the nested describes, so we set up fresh state here.
+    const userSession = await gu.session().user("user1").login();
+    await userSession.loadDoc(`/doc/${docId}`);
+    await gu.openColumnPanel();
+
     // Filter dropdown values based on a user attribute.
     await gu.getCell(1, 1).click();
     await driver.find(".test-field-set-dropdown-condition").click();
