@@ -238,10 +238,13 @@ describe("Dates.ntest", function() {
 
     // Override Date.now() and timezone in the current browser page to return a consistent value,
     // used e.g. for the default for the year and month.
-    await driver.executeScript(
+    // Use executeAsyncScript to properly await the exposeModulesForTests() promise before proceeding.
+    await driver.executeAsyncScript(
+      "var done = arguments[arguments.length - 1]; " +
       "Date.now = () => 1477548296087; " +      // This value is 2016-10-27 02:04:56.087 EST
       "exposeModulesForTests().then(() => { " +
-        "window.exposedModules.moment.tz.setDefault('America/New_York');" +
+        "window.exposedModules.moment.tz.setDefault('America/New_York'); " +
+        "done(); " +
       "});"
     );
 
@@ -251,14 +254,14 @@ describe("Dates.ntest", function() {
       // Type the Date-only shortcut into each cell in the second row.
       await gu.clickCellRC(1, 0);
       for (var i = 0; i < 6; i++) {
-        await gu.waitAppFocus();
+        await gu.waitCellFocus(gu.getCellRC(1, i));
         await gu.sendKeys([$.MOD, ";"], $.TAB);
       }
 
       // Type the Date-Time shortcut into each cell in the third row.
       await gu.clickCellRC(2, 0);
       for (i = 0; i < 6; i++) {
-        await gu.waitAppFocus();
+        await gu.waitCellFocus(gu.getCellRC(2, i));
         await gu.sendKeys([$.MOD, $.SHIFT, ";"], $.TAB);
       }
     }
