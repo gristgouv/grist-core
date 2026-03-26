@@ -138,6 +138,7 @@ import { createAttachmentsIndex, DocStorage, REMOVE_UNUSED_ATTACHMENTS_DELAY } f
 import { expandQuery, getFormulaErrorForExpandQuery } from "app/server/lib/ExpandedQuery";
 import { GranularAccess, GranularAccessForBundle } from "app/server/lib/GranularAccess";
 import { GristServer } from "app/server/lib/GristServer";
+import { getAnonPlaygroundEnabled } from "app/server/lib/gristSettings";
 import {
   AssistanceFormulaEvaluationResult,
   AssistanceSchemaPromptV1Context,
@@ -1841,7 +1842,7 @@ export class ActiveDoc extends EventEmitter {
     const user = docSession.fullUser;
     // For now, fork only if user can read everything (or is owner).
     // TODO: allow forks with partial content.
-    if (!user || !await this.canDownload(docSession)) {
+    if (!user || !await this.canDownload(docSession) || (user.anonymous && !getAnonPlaygroundEnabled())) {
       throw new ApiError("Insufficient access to document to copy it entirely", 403);
     }
     const userId = user.id;
