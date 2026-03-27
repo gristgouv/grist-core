@@ -1,7 +1,17 @@
 import * as path from "path";
 
-import { fileTypeFromFile } from "file-type";
 import { extension, lookup } from "mime-types";
+
+// file-type is an ESM-only module (v17+). We use a dynamic import cached at module level
+// to avoid the overhead of re-importing on every call, while staying compatible with
+// the CommonJS output of this server-side module.
+let _fileTypeFromFile: typeof import("file-type").fileTypeFromFile | undefined;
+async function getFileTypeFromFile() {
+  if (!_fileTypeFromFile) {
+    ({ fileTypeFromFile: _fileTypeFromFile } = await import("file-type"));
+  }
+  return _fileTypeFromFile;
+}
 
 /**
  * Get our best guess of the file extension, based on its original extension (as received from the
@@ -35,6 +45,7 @@ export async function guessExt(filePath: string, fileName: string, mimeType: str
   }
 
   // If not, let's take a look at the file contents.
+  const fileTypeFromFile = await getFileTypeFromFile();
   const detected = await fileTypeFromFile(filePath);
   const detectedExt = detected ? "." + detected.ext : null;
   if (detectedExt) {
